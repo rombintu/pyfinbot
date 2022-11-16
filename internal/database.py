@@ -80,6 +80,10 @@ class Database:
         return True, None
     
     def get_notes(self, uuid, scope="last_month"):
+        """
+        Get notes by scope datetime
+        Scope - [last_month, current_month]
+        """
         err = self._open()
         if err:
             return {}, err
@@ -101,7 +105,3 @@ class Database:
         for cost, category in output:
             notes[category.title()] += cost
         return notes, None
-
-    # def get_last_week(self, uuid):
-    #     notes = self.get_notes_by_days_ago(uuid, 7)
-    #     return notes, None

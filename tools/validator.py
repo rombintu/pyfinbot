@@ -1,3 +1,10 @@
+from pycbrf.toolbox import ExchangeRates
+from datetime import datetime
+
+def convert_to_rub(usd) -> int:
+    today = datetime.today().strftime("%Y-%m-%d")
+    rates = ExchangeRates(today)
+    return int(usd * rates["USD"].value)
 
 def convert_to_int(arg: str) -> int:
     try:
@@ -6,9 +13,13 @@ def convert_to_int(arg: str) -> int:
         return -1
 
 def find_K_in_int(arg: str) -> int:
-    if arg[-1].lower() in ["к", "К", "k", "K"]:
-        return convert_to_int(arg[:-1]) * 1000
+    if arg[-1] == "$":
+        if arg[-2].lower() in ["к","k"]:
+            return convert_to_rub(convert_to_int(arg[:-2])) * 1000
+        return convert_to_rub(convert_to_int(arg[:-1]) * 1000)
     else:
+        if arg[-1].lower() in ["к","k"]:
+            return convert_to_int(arg[:-1]) * 1000
         return convert_to_int(arg)
 
 def filter_by_input(text: str):

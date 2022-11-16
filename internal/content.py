@@ -1,14 +1,22 @@
-link_source_code = "https://"
+link_source_code = "https://github.com/rombintu/pyfinbot.git"
 tg_nickname =  "@rombintu"
 commands = [
     "/help - Помощь", 
     "/expenses - Отчет за текущий месяц", 
-    "/month - Отчет за прошлый месяц", 
+    "/month - Отчет за прошлый месяц",
+    "/settings - Настройка сервиса",
     ]
+
+futures = [
+    "/cancel - Отмена последней операции",
+    "/analytics - Смарт аналитика",
+    "rub|usd - Настройка отчета в разных курсах",
+]
 start_message = f"Привет, я помогу тебе вести учет твоих финансов"\
-                f"\n\nИсходный код: {link_source_code}" \
                 f"\n\nФидбек и баги: {tg_nickname}" \
-                "\n\n{}".format('\n'.join(commands))
+                "\n\n{}".format('\n'.join(commands)) +\
+                "\n\nВ следующих версиях ожидаются функции:{}".format('\n'.join(futures)) +\
+                f"\n\nИсходный код: {link_source_code}" \
 
 error_input = "Неправильный ввод.\nОжидается: Стоимость Категория"
 error_some = "Операция {} не прошла. Обратитесь к администратору"
