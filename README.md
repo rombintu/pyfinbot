@@ -11,7 +11,8 @@ make run
 
 ### Деплой (Linux)
 ```bash
-git clone https://github.com/rombintu/pyfinbot.git /opt/pyfinbot
+sudo git clone https://github.com/rombintu/pyfinbot.git /opt/pyfinbot
+sudo chown $USER:$USER -R /opt/pyfinbot
 cd /opt/pyfinbot
 python3 -m venv venv
 source ./venv/bin/activate

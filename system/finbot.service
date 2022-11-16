@@ -1,11 +1,11 @@
 [Unit]
-Description=bot
+Description=finbot
 
 [Service]
 WorkingDirectory=/opt/pyfinbot
 VIRTUAL_ENV=/opt/pyfinbot/venv
 Environment=PATH=$VIRTUAL_ENV/bin:$PATH
-ExecStart=/opt/pyfinbot/venv/python3 /opt/pyfinbot/main.py
+ExecStart=/opt/pyfinbot/venv/bin/python3 /opt/pyfinbot/main.py
 ExecStop=/bin/kill -15 $MAINPID
 Restart=on-failure
 
