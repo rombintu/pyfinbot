@@ -35,3 +35,4 @@ def filter_by_input(text: str):
         note["comment"] = " ".join(args[2:]) or ""
     return note
     
+    

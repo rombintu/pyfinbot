@@ -1,8 +1,9 @@
 # external imports
-from sqlalchemy import create_engine, Column, MetaData, Table, and_
+from sqlalchemy import create_engine, Column, MetaData, Table, ForeignKey
+from sqlalchemy import select, and_
 # from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy import Integer, String, DateTime
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy.orm import declarative_base, Session, relationship
 # from sqlalchemy.sql import func
 
 # internal imports
@@ -10,23 +11,49 @@ from datetime import datetime, timedelta
 
 # local imports
 from tools import utils
+import operator
 
 Base = declarative_base()
 Metadata = MetaData()
+
+Users = Table(
+    "users",
+    Metadata,
+    Column("_id", Integer, primary_key=True),
+    Column("uuid", Integer, nullable=False, unique=True)
+)
 
 Notes = Table(
     "notes",
     Metadata,
     Column("_id", Integer, primary_key=True),
-    Column("uuid", Integer, nullable=False),
+    Column("user_id", Integer, ForeignKey("users._id")),
     Column("cost", Integer),
-    Column("category", String(20)),
+    Column("category", String(50)),
     Column("comment", String(100)),
     Column("timestamp", DateTime(timezone=True), default=datetime.now()),
 )
 
+LimitC = Table(
+    "limits",
+    Metadata,
+    Column("_id", Integer, primary_key=True),
+    Column("user_id", Integer, ForeignKey("users._id")),
+    Column("category", String(50)),
+    Column("limit", Integer),
+)
+
+
 class Note(Base):
     __table__ = Notes
+    
+class Limits(Base):
+    __table__ = LimitC
+
+class User(Base):
+    __table__ = Users
+    limits = relationship("Limits")
+    notes = relationship("Note")
 
 # class Note(Base):
 #     __tablename__ = "notes"
@@ -45,7 +72,6 @@ class Database:
     def _open(self):
         try:
             self.session = Session(self.engine)
-
             # self.conn = self.engine.connect()
             return 0
         except Exception as err:
@@ -59,26 +85,87 @@ class Database:
         err = self._open()
         if err:
             return False, err
-        output = self.session.query(Note).\
-            filter_by(
-                uuid=uuid,
-                category=category,  
-            ).first()
+        presql = select(Note.category).select_from(User).\
+            where(and_(User.uuid==uuid, Note.category==category))
+        output = self.session.execute(presql).first()
         self._close()
         if output:
             return True, None
             
         return False, None
 
-    def create_one(self, object):
+    def create_note(self, uuid, note):
         err = self._open()
         if err:
             return False, err
-        self.session.add(object)
+        user = self.session.query(User).filter_by(uuid=uuid).first()
+        if not user:
+            user = User(uuid=uuid)
+            self.session.add(user)
+        user.notes.append(note)
+
         self.session.commit()
         self._close()
         return True, None
-    
+
+    def get_categories(self, uuid):
+        err = self._open()
+        if err: return {}, err
+        categories = self.session.query(Note.category).select_from(User).\
+            filter(User.uuid==uuid).\
+            distinct()
+        self._close()
+        return [x[0] for x in categories], None
+
+    def trigger_by_limit(self, uuid, category):
+        limit, err = self.get_limit_by_category(uuid, category)
+        if not limit or err:
+            return False, err
+        err = self._open()
+        if err: return False, err
+
+        summa = self.session.query(Note.cost).select_from(User).\
+            filter(User.uuid == uuid, Note.category == category).all()
+        self._close()
+        if sum([s[0] for s in summa]) > limit: return True, None
+        return False, None
+
+    def get_limit_by_category(self, uuid, category):
+        err = self._open()
+        if err:return None, err
+        limit = self.session.query(Limits.limit).select_from(User).\
+            filter(User.uuid==uuid, Limits.category==category).first()
+        self._close()
+        if limit is None:
+            return limit, None
+        return limit[0], None
+
+    def get_limit_all(self, uuid):
+        err = self._open()
+        if err: return None, err
+        limits = self.session.query(Limits.category, Limits.limit).select_from(User).\
+            filter(User.uuid==uuid, Limits.limit > 0).all()
+        self._close()
+        if not limits:
+            return None, None
+        return limits, None
+
+    def update_limit_by_category(self, uuid, category, new_limit):
+        err = self._open()
+        if err: return err
+        limit, err = self.get_limit_by_category(uuid, category)
+        if err: return err
+        elif limit is None:
+            user = self.session.query(User).filter_by(uuid=uuid).first()
+            user.limits.append(Limits(category=category, limit=new_limit))
+        elif limit != new_limit:
+            l = self.session.query(Limits).select_from(User).\
+                filter(User.uuid==uuid, Limits.category==category).first()
+            l.limit = new_limit
+        self.session.commit()
+        self._close()
+        return None
+
     def get_notes(self, uuid, scope="last_month"):
         """
         Get notes by scope datetime
@@ -96,12 +183,13 @@ class Database:
             start = today.replace(day=1)
             end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
 
-        output = self.session.query(Note.cost, Note.category).\
-            filter(and_(Note.uuid == uuid, \
+        output = self.session.query(Note.cost, Note.category).select_from(User).\
+            filter(and_(User.uuid == uuid, \
                 Note.timestamp > start, 
-                Note.timestamp < end))
+                Note.timestamp < end)).order_by(Note.cost.desc())
         self._close()
         notes = utils.init_dict_from_list(output)
         for cost, category in output:
             notes[category.title()] += cost
+        # return dict(sorted(notes.items(), key=operator.itemgetter(1), reverse=True)), None
         return notes, None
