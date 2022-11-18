@@ -50,20 +50,9 @@ def handle_message_month(message):
 def handle_message_settings(message):
     uuid = message.chat.id
     keyboard = types.InlineKeyboardMarkup()
-    test_keyboard = types.InlineKeyboardButton(text="Ограничитель", callback_data="limit")
-    keyboard.add(test_keyboard)
+    limit_keyboard = types.InlineKeyboardButton(text="Ограничитель", callback_data="limit")
+    keyboard.add(limit_keyboard)
     finbot.send_message(uuid, "Настройки ⚙️", reply_markup=keyboard)
-
-@finbot.message_handler(commands=['categories'])
-def handle_message_settings(message):
-    uuid = message.chat.id
-    categories, err = db.get_categories(uuid)
-    response = "Список категорий:\n"
-    if not categories or err:
-        response = finbot.send_message(uuid, content.some_is_empty.format("Категории"))
-        print(err)
-    response += "\n".join([f"- {c.title()}" for c in categories])
-    finbot.send_message(uuid, response)
 
 @finbot.callback_query_handler(func=lambda call: True)
 def callback_funcs(call):
@@ -76,7 +65,9 @@ def callback_funcs(call):
             response = content.some_is_empty.format("Ограничения")
         else:
             response += "\n".join([f"{cat.title()} - {summ}" for cat, summ in limits])
+
         finbot.send_message(uuid, response)
+
         if err:
             finbot.send_message(uuid, content.error_some.format(content.operations["w"]))
             print(err)
@@ -87,6 +78,7 @@ def callback_funcs(call):
         keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True)
         for category in categories:
             keyboard.row(str(category).title())
+
         finbot.send_message(uuid, 
             content.update_limit_category, reply_markup=keyboard)
         finbot.register_next_step_handler(call.message, update_limit)
@@ -98,12 +90,18 @@ def update_limit(message):
     Request limit cost
     """
     uuid = message.chat.id
+    if message.text == "/cancel":
+        finbot.send_message(uuid, content.cancel, reply_markup=None)
+        return
     select_category = (message.text).lower()
     finbot.send_message(uuid, content.update_limit_cost)
     finbot.register_next_step_handler(message, update_limit_cost, select_category)
 
 def update_limit_cost(message, category):
     uuid = message.chat.id
+    if message.text == "/cancel":
+        finbot.send_message(uuid, content.cancel, reply_markup=None)
+        return
     response = content.success.format(content.operations["w"])
     limit = validator.convert_to_int(message.text)
     err = db.update_limit_by_category(uuid, category, limit)

@@ -112,8 +112,7 @@ class Database:
         err = self._open()
         if err: return {}, err
         categories = self.session.query(Note.category).select_from(User).\
-            filter(User.uuid==uuid).\
-            distinct()
+            filter(User.uuid==uuid).distinct()
         self._close()
         return [x[0] for x in categories], None
 
