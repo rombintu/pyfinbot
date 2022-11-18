@@ -85,8 +85,9 @@ class Database:
         err = self._open()
         if err:
             return False, err
-        presql = select(Note.category).select_from(User).\
-            where(and_(User.uuid==uuid, Note.category==category))
+        user_id = select(User._id).where(User.uuid == uuid)
+        presql = select(Note.category).\
+            where(and_(Note.user_id == user_id, Note.category == category))
         output = self.session.execute(presql).first()
         self._close()
         if output:
@@ -111,8 +112,9 @@ class Database:
     def get_categories(self, uuid):
         err = self._open()
         if err: return {}, err
-        categories = self.session.query(Note.category).select_from(User).\
-            filter(User.uuid==uuid).distinct()
+        user_id = select(User._id).where(User.uuid == uuid)
+        categories = self.session.query(Note.category).\
+            filter(Note.user_id==user_id).distinct()
         self._close()
         return [x[0] for x in categories], None
 
@@ -123,8 +125,9 @@ class Database:
         err = self._open()
         if err: return False, err
 
-        summa = self.session.query(Note.cost).select_from(User).\
-            filter(User.uuid == uuid, Note.category == category).all()
+        user_id = select(User._id).where(User.uuid == uuid)
+        summa = self.session.query(Note.cost).\
+            filter(Note.user_id == user_id, Note.category == category).all()
         self._close()
         if sum([s[0] for s in summa]) > limit: return True, None
         return False, None
@@ -132,8 +135,9 @@ class Database:
     def get_limit_by_category(self, uuid, category):
         err = self._open()
         if err:return None, err
-        limit = self.session.query(Limits.limit).select_from(User).\
-            filter(User.uuid==uuid, Limits.category==category).first()
+        user_id = select(User._id).where(User.uuid == uuid)
+        limit = self.session.query(Limits.limit).\
+            filter(Limits.user_id==user_id, Limits.category==category).first()
         self._close()
         if limit is None:
             return limit, None
@@ -142,8 +146,9 @@ class Database:
     def get_limit_all(self, uuid):
         err = self._open()
         if err: return None, err
-        limits = self.session.query(Limits.category, Limits.limit).select_from(User).\
-            filter(User.uuid==uuid, Limits.limit > 0).all()
+        user_id = select(User._id).where(User.uuid == uuid)
+        limits = self.session.query(Limits.category, Limits.limit).\
+            filter(Limits.user_id==user_id, Limits.limit > 0).all()
         self._close()
         if not limits:
             return None, None
@@ -153,13 +158,14 @@ class Database:
         err = self._open()
         if err: return err
         limit, err = self.get_limit_by_category(uuid, category)
+        user_id = select(User._id).where(User.uuid == uuid)
         if err: return err
         elif limit is None:
             user = self.session.query(User).filter_by(uuid=uuid).first()
             user.limits.append(Limits(category=category, limit=new_limit))
         elif limit != new_limit:
-            l = self.session.query(Limits).select_from(User).\
-                filter(User.uuid==uuid, Limits.category==category).first()
+            l = self.session.query(Limits).\
+                filter(Limits.user_id==user_id, Limits.category==category).first()
             l.limit = new_limit
         self.session.commit()
         self._close()
@@ -181,14 +187,14 @@ class Database:
         elif scope == "current_month":
             start = today.replace(day=1)
             end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
-
-        output = self.session.query(Note.cost, Note.category).select_from(User).\
-            filter(and_(User.uuid == uuid, \
+        user_id = select(User._id).where(User.uuid == uuid)
+        presql = select(Note.cost, Note.category).\
+            where(and_(Note.user_id==user_id,
                 Note.timestamp > start, 
                 Note.timestamp < end)).order_by(Note.cost.desc())
+        output = self.session.execute(presql).all()
         self._close()
         notes = utils.init_dict_from_list(output)
         for cost, category in output:
             notes[category.title()] += cost
-        # return dict(sorted(notes.items(), key=operator.itemgetter(1), reverse=True)), None
         return notes, None
