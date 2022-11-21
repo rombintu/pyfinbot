@@ -82,6 +82,27 @@ def callback_funcs(call):
         finbot.send_message(uuid, 
             content.update_limit_category, reply_markup=keyboard)
         finbot.register_next_step_handler(call.message, update_limit)
+    elif call.data == "unlimit":
+        category = call.message.text.split()[-1].lower()
+        err = db.update_limit_by_category(uuid, category, 0)
+        if err:
+            finbot.send_message(uuid, content.error_some.format(content.operations["w"]))
+            print(err)
+            return
+        # Delete message
+        finbot.delete_message(uuid, call.message.message_id)
+    elif call.data == "undo":
+        args = call.message.text.split()
+        category = args[-1]
+        cost = int(args[-2])
+        note = database.Note(cost=-cost, category=category, comment="delete")
+        ok, err = db.create_note(uuid, note)
+        if err or not ok: 
+            response = content.error_some.format(content.operations["w"])
+            print(err)
+            return
+        # Delete message
+        finbot.delete_message(uuid, call.message.message_id)
     else:
         finbot.send_message(uuid, "PASS")
 
@@ -102,20 +123,20 @@ def update_limit_cost(message, category):
     if message.text == "/cancel":
         finbot.send_message(uuid, content.cancel, reply_markup=None)
         return
-    response = content.success.format(content.operations["w"])
+    response = content.success_w
     limit = validator.find_K_in_int(message.text)
     err = db.update_limit_by_category(uuid, category, limit)
     if err or limit < 0:
         response = content.error_some.format(content.operations["w"])
         print(err)
-    finbot.send_message(uuid, response)
+    finbot.send_message(uuid, response.format(limit, category))
 
 @finbot.message_handler(content_types=["text"])
 def handle_message_text(message):
     uuid = message.chat.id
-    response = content.success.format(content.operations["w"])
+    response = content.success_w
     note = validator.filter_by_input(message.text)
-    
+
     if note["cost"] < 0:
         finbot.send_message(uuid, content.error_input)
         return
@@ -136,35 +157,44 @@ def handle_message_text(message):
             return
         trigger, err = db.trigger_by_limit(uuid, category=note["category"])
         if trigger:
-            finbot.send_message(uuid, content.trigger_limit.format(note["category"].title()))
+            callback_keyboard_trigger = types.InlineKeyboardMarkup()
+            btn = types.InlineKeyboardButton(text="Убрать ограничение", callback_data="unlimit")
+            callback_keyboard_trigger.add(btn)
+            finbot.send_message(uuid, content.trigger_limit.format(note["category"].title()), reply_markup=callback_keyboard_trigger)
 
-        note = database.Note(
+        dbnote = database.Note(
             cost=note["cost"],
             category=note["category"],
             comment=note["comment"],
         )
-        ok, err = db.create_note(uuid, note)
+        ok, err = db.create_note(uuid, dbnote)
         if err or not ok: 
             response = content.error_some.format(content.operations["w"])
             print(err)
-    finbot.send_message(uuid, response)
+    callback_keyboard = types.InlineKeyboardMarkup()
+    btn_scs = types.InlineKeyboardButton(text="Отмена операции", callback_data="undo")
+    callback_keyboard.add(btn_scs)
+    finbot.send_message(uuid, response.format(note["cost"], note["category"]), reply_markup=callback_keyboard)
 
 def new_category(message, note):
     uuid = message.chat.id
-    response = content.success.format(content.operations["w"])
+    response = content.success_w
+    callback_keyboard = types.InlineKeyboardMarkup()
+    btn_scs = types.InlineKeyboardButton(text="Отмена операции", callback_data="undo")
+    callback_keyboard.add(btn_scs)
     if message.text == "Добавить":
-        note = database.Note(
+        dbnote = database.Note(
             cost=note["cost"],
             category=note["category"],
             comment=note["comment"],
         )
-        ok, err = db.create_note(uuid, note)
+        ok, err = db.create_note(uuid, dbnote)
         if err or not ok: 
-            response = content.operations.format(content.operations["w"])
+            response = content.error_some.format(content.operations["w"])
             print(err)
     else:
         response = content.operations["cancel"]
-    finbot.send_message(uuid, response)
+    finbot.send_message(uuid, response.format(note["cost"], note["category"]), reply_markup=callback_keyboard)
 
 def main():
     print("Service status: OK")

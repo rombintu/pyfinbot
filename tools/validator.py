@@ -16,7 +16,7 @@ def find_K_in_int(arg: str) -> int:
     if arg[-1] == "$":
         if arg[-2].lower() in ["к","k"]:
             return convert_to_rub(convert_to_int(arg[:-2])) * 1000
-        return convert_to_rub(convert_to_int(arg[:-1]) * 1000)
+        return convert_to_rub(convert_to_int(arg[:-1]))
     else:
         if arg[-1].lower() in ["к","k"]:
             return convert_to_int(arg[:-1]) * 1000
