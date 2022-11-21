@@ -64,7 +64,7 @@ def callback_funcs(call):
         if not limits:
             response = content.some_is_empty.format("Ограничения")
         else:
-            response += "\n".join([f"{cat.title()} - {summ}" for cat, summ in limits])
+            response += "\n".join([f"{cat.title()} - {utils.fcost(summ)}" for cat, summ in limits])
 
         finbot.send_message(uuid, response)
 
@@ -103,13 +103,11 @@ def update_limit_cost(message, category):
         finbot.send_message(uuid, content.cancel, reply_markup=None)
         return
     response = content.success.format(content.operations["w"])
-    limit = validator.convert_to_int(message.text)
+    limit = validator.find_K_in_int(message.text)
     err = db.update_limit_by_category(uuid, category, limit)
-    if err:
+    if err or limit < 0:
         response = content.error_some.format(content.operations["w"])
         print(err)
-    elif limit < 0:
-        response = content.error_some.format(content.operations["w"])
     finbot.send_message(uuid, response)
 
 @finbot.message_handler(content_types=["text"])
