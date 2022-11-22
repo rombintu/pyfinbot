@@ -124,10 +124,17 @@ class Database:
             return False, err
         err = self._open()
         if err: return False, err
-
+        today = datetime.today()
+        start = today.replace(day=1)
+        end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
         user_id = select(User._id).where(User.uuid == uuid)
         summa = self.session.query(Note.cost).\
-            filter(Note.user_id == user_id, Note.category == category).all()
+            filter(
+                Note.user_id == user_id, 
+                Note.category == category,
+                Note.timestamp > start, 
+                Note.timestamp < end,
+                ).all()
         self._close()
         if sum([s[0] for s in summa]) > limit: return True, None
         return False, None
