@@ -1,5 +1,3 @@
-import schedule
-
 # from prettytable import PrettyTable
 
 # sys.setdefaultencoding('utf8')
