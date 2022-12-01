@@ -1,3 +1,4 @@
+import schedule
 
 # from prettytable import PrettyTable
 

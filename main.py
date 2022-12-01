@@ -9,7 +9,6 @@ from telebot import types
 from internal import content, database
 from tools import validator, parser, utils
 
-
 envs = parser.parse_dotenv()
 
 finbot = telebot.TeleBot(envs["TOKEN"], parse_mode=None)

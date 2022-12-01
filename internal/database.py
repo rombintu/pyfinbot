@@ -125,8 +125,11 @@ class Database:
         err = self._open()
         if err: return False, err
         today = datetime.today()
-        start = today.replace(day=1)
-        end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
+        start = today.replace(day=1, hour=0, minute=0)
+        if today.month == 12:
+            end = today.replace(month=12, day=31)
+        else:
+            end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
         user_id = select(User._id).where(User.uuid == uuid)
         summa = self.session.query(Note.cost).\
             filter(
@@ -189,11 +192,14 @@ class Database:
 
         today = datetime.today()
         if scope == "last_month":
-            start = today.replace(month=today.month-1, day=1)
+            start = today.replace(month=today.month-1, day=1, hour=0, minute=0)
             end = today.replace(day=1) - timedelta(days=1)
         elif scope == "current_month":
-            start = today.replace(day=1)
-            end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
+            start = today.replace(day=1, hour=0, minute=0)
+            if today.month == 12:
+                end = today.replace(month=12, day=31)
+            else: 
+                end = today.replace(month=today.month+1, day=1) - timedelta(days=1)
         user_id = select(User._id).where(User.uuid == uuid)
         presql = select(Note.cost, Note.category).\
             where(and_(Note.user_id==user_id,
