@@ -1,6 +1,6 @@
 # local imports
 # import os, sys
-
+import logging
 # external imports
 import telebot
 from telebot import types
@@ -28,7 +28,7 @@ def handle_message_expenses(message):
     notes, err = db.get_notes(uuid, scope="current_month")
     if err: 
         response = content.error_some.format(content.operations["r"])
-        print(err)
+        logging.error(err)
     else:
         response += utils.fnotes(notes)
     finbot.send_message(message.chat.id, response)
@@ -40,7 +40,7 @@ def handle_message_month(message):
     notes, err = db.get_notes(uuid, scope="last_month")
     if err: 
         response = content.error_some.format(content.operations["r"])
-        print(err)
+        logging.error(err)
     else:
         response += utils.fnotes(notes)
     finbot.send_message(message.chat.id, response)
@@ -69,7 +69,7 @@ def callback_funcs(call):
 
         if err:
             finbot.send_message(uuid, content.error_some.format(content.operations["w"]))
-            print(err)
+            logging.error(err)
             return
         elif not categories:
             finbot.send_message(uuid, content.some_is_empty.format("Категории"))
@@ -86,7 +86,7 @@ def callback_funcs(call):
         err = db.update_limit_by_category(uuid, category, 0)
         if err:
             finbot.send_message(uuid, content.error_some.format(content.operations["w"]))
-            print(err)
+            logging.error(err)
             return
         # Delete message
         finbot.delete_message(uuid, call.message.message_id)
@@ -98,7 +98,7 @@ def callback_funcs(call):
         ok, err = db.create_note(uuid, note)
         if err or not ok: 
             response = content.error_some.format(content.operations["w"])
-            print(err)
+            logging.error(err)
             return
         # Delete message
         finbot.delete_message(uuid, call.message.message_id)
@@ -127,7 +127,7 @@ def update_limit_cost(message, category):
     err = db.update_limit_by_category(uuid, category, limit)
     if err or limit < 0:
         response = content.error_some.format(content.operations["w"])
-        print(err)
+        logging.error(err)
     finbot.send_message(uuid, response.format(limit, category))
 
 @finbot.message_handler(content_types=["text"])
@@ -143,7 +143,7 @@ def handle_message_text(message):
         exist, err = db.category_is_exist(uuid, note["category"])
         if err: 
             finbot.send_message(uuid, content.error_some.format(content.operations["w"]))        
-            print(err)
+            logging.error(err)
             return
         elif not exist:
             keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True)
@@ -169,7 +169,7 @@ def handle_message_text(message):
         ok, err = db.create_note(uuid, dbnote)
         if err or not ok: 
             response = content.error_some.format(content.operations["w"])
-            print(err)
+            logging.error(err)
     callback_keyboard = types.InlineKeyboardMarkup()
     btn_scs = types.InlineKeyboardButton(text="Отмена операции", callback_data="undo")
     callback_keyboard.add(btn_scs)
@@ -190,13 +190,14 @@ def new_category(message, note):
         ok, err = db.create_note(uuid, dbnote)
         if err or not ok: 
             response = content.error_some.format(content.operations["w"])
-            print(err)
+            logging.error(err)
     else:
         response = content.operations["cancel"]
+        callback_keyboard = types.InlineKeyboardMarkup()
     finbot.send_message(uuid, response.format(note["cost"], note["category"]), reply_markup=callback_keyboard)
 
 def main():
-    print("Service status: OK")
+    logging.debug("Service status: OK")
     finbot.polling(none_stop=True, timeout=60)
 
 if __name__ == "__main__":
